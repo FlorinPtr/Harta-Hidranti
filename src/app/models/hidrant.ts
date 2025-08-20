@@ -23,7 +23,7 @@ export interface Hidrant {
   presiune: Pressure;       // presiunea apei
 }
 
-export function toJSON(h: Hidrant): Record<string, any> {
+export function toJSON(h: Hidrant): Record<string, unknown> {
   return {
     location: h.location.toJSON(),
     observatii: h.observatii,
@@ -34,14 +34,15 @@ export function toJSON(h: Hidrant): Record<string, any> {
   };
 }
 
-export function fromJSON(data: Record<string, any>): Hidrant {
+export function fromJSON(data: Record<string, unknown>): Hidrant {
+  const locationData = data.location as { latitude: number; longitude: number };
   return {
-    id: data.id,
-    location: new GeoPoint(data.location.latitude, data.location.longitude),
-    observatii: data.observatii,
-    functional: data.functional,
-    lastUpdated: data.lastUpdated,
-    tipul: data.tipul,
-    presiune: data.presiune,
+    id: data.id as string | undefined,
+    location: new GeoPoint(locationData.latitude, locationData.longitude),
+    observatii: data.observatii as string | undefined,
+    functional: data.functional as boolean,
+    lastUpdated: data.lastUpdated as number,
+    tipul: data.tipul as Type,
+    presiune: data.presiune as Pressure,
   };
 }

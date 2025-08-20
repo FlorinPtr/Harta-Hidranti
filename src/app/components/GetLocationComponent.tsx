@@ -98,7 +98,7 @@ export default function LocationSelector({
             onClick={async () => {
               console.log("navigator.geolocation:", navigator.geolocation);
 
-                const perm = await (navigator as any).permissions?.query({
+                const perm = await navigator.permissions?.query({
                   name: "geolocation",
                 });
                 console.log("Permission state:", perm?.state);
