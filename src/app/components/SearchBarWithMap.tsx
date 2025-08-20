@@ -15,6 +15,8 @@ import { getAllHydrants } from "../services/hidranti-zona";
 import { GeoPoint, Timestamp } from "firebase/firestore";
 import AddHydrantDialog from "./AddHydrantDialog";
 import React from "react";
+import EditHydrantDialog from "./EditHydrantDialog";
+import LoginDialog from "./LoginDialog";
 
 const libraries: "places"[] = ["places"];
 
@@ -43,6 +45,34 @@ function LoadedSearchBarWithMap({
   const [activeHydrantId, setActiveHydrantId] = useState<string | null>(null);
   const [hydrants, setHydrants] = useState<Hidrant[]>([]);
   const [zoom, setZoom] = useState(14); // Default zoom level
+  const [isAdmin, setIsAdmin] = useState(false); // Simulate admin check
+  const [showLogin, setShowLogin] = useState(false);
+  const [editingHydrant, setEditingHydrant] = useState<Hidrant | null>(null);
+
+
+
+  // La mount, citim din localStorage
+  useEffect(() => {
+    const storedAdmin = localStorage.getItem("isAdmin");
+    if (storedAdmin === "true") {
+      setIsAdmin(true);
+    }
+  }, []);
+
+  const handleLogin = (status: boolean) => {
+    if (status) {
+      localStorage.setItem("isAdmin", "true");
+      setIsAdmin(status);
+
+    } else {
+      localStorage.removeItem("isAdmin");
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAdmin(false);
+    localStorage.removeItem("isAdmin");
+  };
 
   const {
     ready,
@@ -104,6 +134,10 @@ function LoadedSearchBarWithMap({
     url: "/fire-truck.png",
     scaledSize: new google.maps.Size(60, 60),
   };
+
+  function handleEditHydrant(h: Hidrant): void {
+        setEditingHydrant(h);
+  }
 
   return (
     <div className="flex flex-col items-center w-full max-w-xl mx-auto">
@@ -177,45 +211,85 @@ function LoadedSearchBarWithMap({
                   }
                 />
                 {activeHydrantId === h.id && (
-                  <InfoWindow
-                    options={{ pixelOffset: new google.maps.Size(0, -20) }} // 30px above the marker
-                    position={{
-                      lat: h.location.latitude,
-                      lng: h.location.longitude,
-                    }}
-                    onCloseClick={() => setActiveHydrantId(null)}
-                  >
-                    <div className="bg-gray-600 text-sm p-2 rounded-md text-white">
-                      <p>
-                        <strong>Tip:</strong> {h.tipul}
-                      </p>
-                      <p>
-                        <strong>Presiune:</strong> {h.presiune}
-                      </p>
-                      <p>
-                        <strong>Funcțional:</strong>{" "}
-                        {h.functional ? "✅" : "❌"}
-                      </p>
-                      <p>
-                        <strong>Ultima actualizare:</strong>{" "}
-                        {h.lastUpdated
-                          ? new Date(h.lastUpdated).toLocaleString()
-                          : ""}
-                      </p>
-                    </div>
-                  </InfoWindow>
+                <InfoWindow
+  options={{ pixelOffset: new google.maps.Size(0, -20) }} // 20px above marker
+  position={{
+    lat: h.location.latitude,
+    lng: h.location.longitude,
+  }}
+  onCloseClick={() => setActiveHydrantId(null)}
+>
+  <div className="bg-gray-600 text-sm p-2 rounded-md text-white">
+    <p>
+      <strong>Tip:</strong> {h.tipul}
+    </p>
+    <p>
+      <strong>Presiune:</strong> {h.presiune}
+    </p>
+    <p>
+      <strong>Funcțional:</strong> {h.functional ? "✅" : "❌"}
+    </p>
+    <p>
+      <strong>Ultima actualizare:</strong>{" "}
+      {h.lastUpdated ? new Date(h.lastUpdated).toLocaleString() : ""}
+    </p>
+
+    {/* Buton editare vizibil doar pentru admin */}
+    {isAdmin && (
+      <div className="pt-2 flex justify-end">
+        <button
+          onClick={() => handleEditHydrant(h)} // funcția care deschide dialogul de editare
+          className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 rounded-md"
+        >
+          Editează
+        </button>
+      </div>
+    )}
+  </div>
+</InfoWindow>
+
                 )}
               </React.Fragment>
             ))}
           </GoogleMap>
-
+{editingHydrant && (
+        <EditHydrantDialog
+         isOpen={!!editingHydrant}
+          hydrant={editingHydrant}
+          onHydrantUpdated={(updatedHydrant) => {
+            setHydrants((prev) =>
+              prev.map((h) =>
+                h.id === updatedHydrant.id ? updatedHydrant : h
+              )
+            );
+            setActiveHydrantId(updatedHydrant.id!);
+            setZoom(16);
+          }}
+          onHydrantDeleted={(hydrantId) => {
+            setHydrants((prev) => prev.filter((h) => h.id !== hydrantId));
+            setActiveHydrantId(null);
+            setZoom(14);
+          }}
+          onClose={() => setEditingHydrant(null)}
+        />
+      )}
           <AddHydrantDialog
+            onLogin={handleLogin}
+            isAdmin={isAdmin}
             onHydrantAdded={(hydrant) => {
               setHydrants((prev) => [...prev, hydrant]);
               setActiveHydrantId(hydrant.id!);
               setZoom(16);
             }}
           />
+
+           {showLogin && (
+        <LoginDialog
+          onClose={() => setShowLogin(false)}
+          onLogin={handleLogin}
+        />
+      )}
+          
         </div>
       )}
     </div>

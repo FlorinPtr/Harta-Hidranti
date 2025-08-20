@@ -1,24 +1,38 @@
 "use client";
 
+import { init } from "next/dist/compiled/webpack/webpack";
 import { useState, useEffect } from "react";
 
 interface LocationSelectorProps {
+  initialLat?: string;
+  initialLng?: string;
   onLocationChange?: (lat: string, lng: string) => void;
 }
 
 export default function LocationSelector({
+  initialLat,
+  initialLng,
   onLocationChange,
 }: LocationSelectorProps) {
   const [mode, setMode] = useState<"auto" | "manual">("auto");
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
-  const [precision, setPrecision] = useState<string | null>(null);
+  const [lat, setLat] = useState(initialLat || "");
+  const [lng, setLng] = useState(initialLng || "");
+
+  const defaultPrecision =
+  initialLat && initialLng
+    ? `✅ Lat: ${initialLat}, Lng: ${initialLng} (Valori inițiale)`
+    : null;
+  const [precision, setPrecision] = useState<string | null>(defaultPrecision);
+  console.log(defaultPrecision);
+
+   
 
   // Emit values whenever they change
   useEffect(() => {
     if (onLocationChange) {
       onLocationChange(lat, lng);
     }
+  
   }, [lat, lng, onLocationChange]);
 
   const handleGetLocation = async () => {

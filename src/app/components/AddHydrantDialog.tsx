@@ -4,17 +4,23 @@ import { collection, addDoc, serverTimestamp, GeoPoint } from "firebase/firestor
 import { Plus } from "lucide-react";
 import { Hidrant, Pressure, toJSON, Type } from "../models/hidrant";
 import GetLocationComponent from "./GetLocationComponent";
+import LoginDialog from "./LoginDialog";
+import { on } from "events";
 
 
 type AddHydrantDialogProps = {
+  isAdmin: boolean;
   isOpen?: boolean;
   onClose?: () => void;
+  onLogin: (isAdmin: boolean) => void;
   onHydrantAdded: (hydrant: Hidrant) => void; // callback
 };
 
 export default function AddHydrantDialog({
+  isAdmin,
   isOpen,
   onClose,
+  onLogin,
   onHydrantAdded,
 }: AddHydrantDialogProps) {
   
@@ -24,6 +30,18 @@ export default function AddHydrantDialog({
   const [functional, setFunctional] = useState(true);
   const [type, setType] = useState(Type.SUPRATERAN);
   const [pressure, setPressure] = useState<Pressure>(Pressure.GOOD);
+    const [showLogin, setShowLogin] = useState(false);
+  
+  const handleLogin = (status: boolean) => {
+    if (status) {
+      localStorage.setItem("isAdmin", "true");
+      setOpen(true);
+      setShowLogin(false);
+      onLogin(status)
+    } else {
+      localStorage.removeItem("isAdmin");
+    }
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +75,15 @@ export default function AddHydrantDialog({
       {/* Floating + Button */}
       <button
         className="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:bg-blue-700"
-        onClick={() => setOpen(true)}
+        onClick={() => { 
+          if(isAdmin){
+          setOpen(true);
+          } else {
+            console.log("You need to be an admin to add hydrants.");
+            setOpen(false);
+            setShowLogin(true);
+          }
+        }}
       >
         <Plus className="w-6 h-6" />
       </button>
@@ -134,8 +160,15 @@ export default function AddHydrantDialog({
               </div>
             </form>
           </div>
+             
         </div>
       )}
+       {showLogin && (
+                  <LoginDialog
+                    onClose={() => setShowLogin(false)}
+                    onLogin={handleLogin}
+                  />
+                )}
     </>
   );
 }
