@@ -25,7 +25,7 @@ export default function LoginDialog({ onClose, onLogin }: LoginDialogProps) {
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
       <div className="bg-gray-600 p-6 rounded-lg shadow-lg w-80">
         <h2 className="text-lg font-bold mb-4 text-white">Autentificare</h2>
-                <p className="text-sm mb-4 p-2 text-white">Trebuie sa fii admin pentru a adauga sau edita hidranti</p>
+                <p className="text-sm mb-4 p-2 text-white/80">Trebuie sa fii admin pentru a adauga sau edita hidranti</p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
