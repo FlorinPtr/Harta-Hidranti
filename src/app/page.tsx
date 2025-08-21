@@ -47,7 +47,7 @@ export default function Home() {
           <div className="mt-4 text-center">
             <p>
               {showFullText
-                ? description + "  Este un proiect open-source care își propune să ajute pompierii să aibă acces rapid la informații despre hidranți, facilitând astfel intervențiile în caz de urgență. In acest moment este functionala doar in orașul Lupeni."
+                ? description + "  Este un proiect open-source care își propune să ajute pompierii să aibă acces rapid la informații despre hidranți, facilitând astfel intervențiile în caz de urgență. In acest moment este in teste in orașul Lupeni."
                 : description}
             </p>
             <button
