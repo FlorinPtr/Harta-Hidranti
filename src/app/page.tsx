@@ -43,7 +43,7 @@ export default function Home() {
       />
 
 
-        {!searchDone && (
+        {true && (
           <div className="mt-4 text-center">
             <p>
               {showFullText
