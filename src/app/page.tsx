@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
 import SearchBarWithMap from "./components/SearchBarWithMap";
 
 export default function Home() {
   const [showFullText, setShowFullText] = useState(false);
   const [searchDone, setSearchDone] = useState(false);
+
 
  
   const description =
@@ -22,18 +23,16 @@ export default function Home() {
     >
        {/* Conditional overlay */}
   <div
-    className="absolute inset-0"
-    style={{
-      backgroundColor: "rgba(0,0,0,0.7)", // adjust opacity here
-      opacity: searchDone ? 0.8 : 0,   // conditional opacity
-      transition: "opacity 0.3s",
-    }}
+    className={`absolute inset-0 transition-opacity duration-300 ${
+    searchDone ? "opacity-60 pointer-events-auto" : "opacity-0 pointer-events-none"
+  }`}
     onClick={() => setSearchDone(false)} // click to reset search
   />
-        <Navbar />
+        <Navbar/>
 
-      <div className={!searchDone? "bg-black/50 p-6 m-10 rounded-2xl shadow-lg max-w-xl w-full"
-      : "bg-black/20 p-2 rounded-2xl shadow-lg max-w-xl w-full"}>
+      <div className={!searchDone? "bg-black/50 p-6 m-10 rounded-xl shadow-lg max-w-xl w-full"
+      : "bg-black/50 mt-4 py-3 sm:p-2 rounded-xl shadow-lg max-w-xl w-full"
+}>
       <SearchBarWithMap
         onSearchStatusChange={(status: string) => {
           console.log("Search status changed:", status);
@@ -43,8 +42,7 @@ export default function Home() {
       />
 
 
-        {!searchDone && (
-          <div className="mt-4 text-center">
+          <div className="mt-4 p-2 text-center">
             <p>
               {showFullText
                 ? description + "  Este un proiect open-source care își propune să ajute pompierii să aibă acces rapid la informații despre hidranți, facilitând astfel intervențiile în caz de urgență. In acest moment este functionala doar in orașul Lupeni."
@@ -57,7 +55,6 @@ export default function Home() {
               {showFullText ? "Restrange" : "Afișează mai mult"}
             </button>
           </div>
-        )}
 
  
       </div>

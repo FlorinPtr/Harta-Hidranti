@@ -1,5 +1,6 @@
 "use client";
 
+import { on } from "events";
 import { init } from "next/dist/compiled/webpack/webpack";
 import { useState, useEffect } from "react";
 
@@ -17,6 +18,7 @@ export default function LocationSelector({
   const [mode, setMode] = useState<"auto" | "manual">("auto");
   const [lat, setLat] = useState(initialLat || "");
   const [lng, setLng] = useState(initialLng || "");
+  const [loading, setLoading] = useState(false);
 
   const defaultPrecision =
   initialLat && initialLng
@@ -35,44 +37,64 @@ export default function LocationSelector({
   
   }, [lat, lng, onLocationChange]);
 
-  const handleGetLocation = async () => {
-    if (!navigator.geolocation) {
-      setPrecision("❌ Geolocation is not supported by this browser.");
-      return;
-    }
+const handleGetLocation = async () => {
+  setLoading(true);
+  setPrecision("⏳ Se stabileste locatia...");
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const newLat = pos.coords.latitude.toFixed(6);
-        const newLng = pos.coords.longitude.toFixed(6);
+  if (!navigator.geolocation) {
+    setPrecision("❌ Geolocation is not supported by this browser.");
+    setLoading(false);
+    return;
+  }
 
-        setLat(newLat);
-        setLng(newLng);
-        console.log(`Detected location: Lat ${newLat}, Lng ${newLng}`);
+  try {
+    const pos: GeolocationPosition = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      });
+    });
 
-        setPrecision(
-          `✅ Lat: ${newLat}, Lng: ${newLng}, Precision: ${pos.coords.accuracy.toFixed(
-            1
-          )} m`
-        );
-      },
-      (err: GeolocationPositionError) => {
-        console.error("Error getting location:", err);
-        if (err.code === err.PERMISSION_DENIED) {
-          setPrecision(
-            "❌ Location permission denied. Please enable it in your browser settings."
-          );
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-          setPrecision("❌ Location unavailable.");
-        } else if (err.code === err.TIMEOUT) {
-          setPrecision("❌ Location request timed out.");
-        } else {
-          setPrecision("❌ Error: " + err.message);
-        }
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+    const newLat = pos.coords.latitude.toFixed(6);
+    const newLng = pos.coords.longitude.toFixed(6);
+
+    setLat(newLat);
+    setLng(newLng);
+
+    console.log(`Locatie gasita: Lat ${newLat}, Lng ${newLng}`);
+
+    setPrecision(
+      `✅ Lat: ${newLat}, Lng: ${newLng}, Precizie: ${pos.coords.accuracy.toFixed(
+        1
+      )} m`
     );
-  };
+
+    // ✅ Use calculated values, not possibly stale state
+    console.log("Lat and Lng set to:", newLat, newLng);
+    onLocationChange?.(newLat, newLng);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    console.error("Error getting location:", err);
+
+    if (err && "code" in err) {
+      if (err.code === err.PERMISSION_DENIED) {
+        setPrecision("❌ Location permission denied. Please enable it.");
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        setPrecision("❌ Location unavailable.");
+      } else if (err.code === err.TIMEOUT) {
+        setPrecision("❌ Location request timed out.");
+      } else {
+        setPrecision("❌ Error: " + (err.message || "Unknown error"));
+      }
+    } else {
+      setPrecision("❌ Unexpected error: " + (err?.message || "Unknown error"));
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="p-4 max-w-md mx-auto border rounded-2xl shadow space-y-4">
@@ -106,23 +128,23 @@ export default function LocationSelector({
       {mode === "auto" && (
         <div className="space-y-2">
           <p className="text-sm text-gray-200">
-            {precision || "Press the button to detect your location"}
+            {precision || "Apasa butonul pentru a detecta locatia ta curenta."}
           </p>
+          
           <button
             onClick={async () => {
-              console.log("navigator.geolocation:", navigator.geolocation);
+          //    console.log("navigator.geolocation:", navigator.geolocation);
 
-                const perm = await navigator.permissions?.query({
-                  name: "geolocation",
-                });
-                console.log("Permission state:", perm?.state);
+                // const perm = await navigator.permissions?.query({
+                //   name: "geolocation",
+                // });
+                // console.log("Permission state:", perm?.state);
            
-
-               handleGetLocation();
+                handleGetLocation();
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"
           >
-            Check Location
+            Detecteaza locatia
           </button>
         </div>
       )}

@@ -1,7 +1,9 @@
 import Image from "next/image";
 import AvatarWidget from "./AvatarWidget";
 
+
 export default function Navbar() {
+
   return (
     <nav className="w-full bg-white/80 shadow-md px-6 py-3 flex items-center justify-between">
       {/* Left: Logo + Text */}
@@ -22,7 +24,7 @@ export default function Navbar() {
 
       {/* Right: Avatar + Name */}
       <div className="flex items-center gap-3">
-      <AvatarWidget name={""} />
+      <AvatarWidget/>
       </div>
     </nav>
   );

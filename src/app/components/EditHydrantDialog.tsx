@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { firestore } from "../utils/firebase";
 import { doc, updateDoc, deleteDoc, GeoPoint } from "firebase/firestore";
-import { Hidrant, Pressure, Type, toJSON } from "../models/hidrant";
+import { Hidrant, Pressure, Type, saveUpdatedHydrantToFirestore, toJSON } from "../models/hidrant";
 import GetLocationComponent from "./GetLocationComponent";
 
 type EditHydrantDialogProps = {
@@ -42,11 +42,16 @@ export default function EditHydrantDialog({
         return;
       }
 
-      const hydrantRef = doc(firestore, "hydrants", hydrant.id);
-      await updateDoc(hydrantRef, toJSON(updatedHydrant) as any);
+     const saved = await saveUpdatedHydrantToFirestore(updatedHydrant);
+        if (!saved) {
+            console.error("Failed to save updated hydrant to Firestore");
+            return;
+        }else{
 
-      onHydrantUpdated(updatedHydrant);
-      onClose();
+         onHydrantUpdated(updatedHydrant);
+         onClose();
+        }
+      
     } catch (err) {
       console.error("Error updating hydrant:", err);
     }
@@ -59,7 +64,10 @@ export default function EditHydrantDialog({
         return;
       }
       const hydrantRef = doc(firestore, "hydrants", hydrant.id);
-      await deleteDoc(hydrantRef);
+      await deleteDoc(hydrantRef).catch((err) => {
+        console.error("Error deleting hydrant:", err);
+        return;
+      });
       onHydrantDeleted(hydrant.id);
       onClose();
     } catch (err) {
@@ -73,7 +81,7 @@ export default function EditHydrantDialog({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-gray-700 rounded-lg shadow-lg p-6 w-96">
         <h2 className="text-xl font-bold mb-4">Editează hidrant</h2>
-        <form onSubmit={handleSave} className="space-y-2">
+        <div className="space-y-2">
           <GetLocationComponent
             initialLat={lat}
             initialLng={lng}
@@ -134,14 +142,15 @@ export default function EditHydrantDialog({
                 Anulează
               </button>
               <button
-                type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={handleSave}
               >
+            
                 Salvează
               </button>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

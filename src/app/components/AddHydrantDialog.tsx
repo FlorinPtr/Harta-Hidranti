@@ -1,26 +1,20 @@
-import { SetStateAction, useState } from "react";
+import { SetStateAction, useEffect, useState } from "react";
 import { firestore } from "../utils/firebase";
 import { collection, addDoc, serverTimestamp, GeoPoint } from "firebase/firestore";
 import { Plus } from "lucide-react";
 import { Hidrant, Pressure, toJSON, Type } from "../models/hidrant";
 import GetLocationComponent from "./GetLocationComponent";
 import LoginDialog from "./LoginDialog";
-import { on } from "events";
+import { geohashForLocation } from "geofire-common";
 
 
 type AddHydrantDialogProps = {
-  isAdmin: boolean;
   isOpen?: boolean;
-  onClose?: () => void;
-  onLogin: (isAdmin: boolean) => void;
   onHydrantAdded: (hydrant: Hidrant) => void; // callback
 };
 
 export default function AddHydrantDialog({
-  isAdmin,
   isOpen,
-  onClose,
-  onLogin,
   onHydrantAdded,
 }: AddHydrantDialogProps) {
   
@@ -31,17 +25,8 @@ export default function AddHydrantDialog({
   const [type, setType] = useState(Type.SUPRATERAN);
   const [pressure, setPressure] = useState<Pressure>(Pressure.GOOD);
     const [showLogin, setShowLogin] = useState(false);
-  
-  const handleLogin = (status: boolean) => {
-    if (status) {
-      localStorage.setItem("isAdmin", "true");
-      setOpen(true);
-      setShowLogin(false);
-      onLogin(status)
-    } else {
-      localStorage.removeItem("isAdmin");
-    }
-  };
+
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,6 +36,7 @@ export default function AddHydrantDialog({
       const newHydrant: Hidrant = {
         
         location: new GeoPoint(parseFloat(lat), parseFloat(lng)),
+        geohash: geohashForLocation([parseFloat(lat), parseFloat(lng)]),
         observatii: "",
         functional,
         tipul: type,
@@ -74,9 +60,9 @@ export default function AddHydrantDialog({
     <>
       {/* Floating + Button */}
       <button
-        className="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:bg-blue-700"
+        className="fixed bottom-6 right-4 p-3 bg-white text-white rounded-full border-2 border-black flex items-center justify-center shadow-lg hover:bg-blue-100"
         onClick={() => { 
-          if(isAdmin){
+          if(localStorage.getItem("isAdmin") === "true" ){
           setOpen(true);
           } else {
             console.log("You need to be an admin to add hydrants.");
@@ -85,7 +71,7 @@ export default function AddHydrantDialog({
           }
         }}
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-6 h-6 text-gray-700" />
       </button>
 
       {/* Modal */}
@@ -93,11 +79,16 @@ export default function AddHydrantDialog({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-gray-700 rounded-lg shadow-lg p-6 w-96">
             <h2 className="text-xl font-bold mb-4">Adaugă un hidrant</h2>
-            <form onSubmit={handleSubmit} className="space-y-2">
+            <div className="space-y-2">
              <GetLocationComponent
                 onLocationChange={(lat, lng) => {
+                  if(lat == "" || lng == ""){
+                    console.log("Location not set yet");
+                  } else {
+                    console.log("Location received in AddHydrantDialog:", lat, lng);
                   setLat(lat.toString());
                   setLng(lng.toString());
+                  }
               } 
                 }
               />    
@@ -147,18 +138,18 @@ export default function AddHydrantDialog({
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="px-4 py-2 border rounded hover:bg-gray-100"
+                  className="px-4 py-2 border bg-white/80 text-black rounded hover:bg-gray-100"
                 >
                   Anulează
                 </button>
                 <button
-                  type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  onClick={handleSubmit}
                 >
                   Salvează
                 </button>
               </div>
-            </form>
+            </div>
           </div>
              
         </div>
@@ -166,7 +157,6 @@ export default function AddHydrantDialog({
        {showLogin && (
                   <LoginDialog
                     onClose={() => setShowLogin(false)}
-                    onLogin={handleLogin}
                   />
                 )}
     </>

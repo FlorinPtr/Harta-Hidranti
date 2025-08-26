@@ -2,10 +2,9 @@ import { useState } from "react";
 
 interface LoginDialogProps {
   onClose: () => void;
-  onLogin: (isAdmin: boolean) => void;
 }
 
-export default function LoginDialog({ onClose, onLogin }: LoginDialogProps) {
+export default function LoginDialog({ onClose }: LoginDialogProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -13,9 +12,11 @@ export default function LoginDialog({ onClose, onLogin }: LoginDialogProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Hardcoded admin credentials
-    if (username === "adminH" && password === "secret123") {
-      onLogin(true);
-      onClose();
+    if (username === "adminH" && password === "adminH123") {
+        localStorage.setItem("isAdmin", "true");
+        window.dispatchEvent(new Event("isAdminChanged")); // Notify other components
+        setError("");
+        onClose();
     } else {
       setError("Date de autentificare incorecte");
     }
