@@ -63,7 +63,6 @@ function LoadedSearchBarWithMap({
   const mapRef = useRef<google.maps.Map | null>(null);
 
   // La mount, citim din localStorage
- 
 
   const {
     ready,
@@ -85,50 +84,49 @@ function LoadedSearchBarWithMap({
     if (onSearchStatusChange) onSearchStatusChange(newStatus);
   };
 
-useEffect(() => {
-  async function fetchHydrants() {
-    try {
-      // 🔹 Get filters from localStorage
-      if (!center) {
-        return;
+  useEffect(() => {
+    async function fetchHydrants() {
+      try {
+        // 🔹 Get filters from localStorage
+        if (!center) {
+          return;
+        }
+
+        const range = localStorage.getItem("rang") || "10";
+        const pressure = localStorage.getItem("pressureFilter") || "all";
+        const status = localStorage.getItem("statusFilter") || "all";
+
+        console.log("Applying filters:", { range, pressure, status });
+
+        // Fetch hydrants (pass filters if your API supports them)
+        const data = await getHydrantsNearby(
+          center, // default center if null
+          parseInt(range),
+          pressure,
+          status
+        );
+
+        setHydrants(data);
+      } catch (err) {
+        console.error("Error fetching hydrants", err);
       }
-
-      const range = localStorage.getItem("rang") || "10";
-      const pressure = localStorage.getItem("pressureFilter") || "all";
-      const status = localStorage.getItem("statusFilter") || "all";
-
-      console.log("Applying filters:", { range, pressure, status });
-
-      // Fetch hydrants (pass filters if your API supports them)
-      const data = await getHydrantsNearby(
-        center, // default center if null
-        parseInt(range),
-        pressure,
-        status
-      );
-
-      console.log("Fetching hydrants...", JSON.stringify(data));
-      setHydrants(data);
-    } catch (err) {
-      console.error("Error fetching hydrants", err);
     }
-  }
 
-  // fetch on mount
-  fetchHydrants();
-
-  // fetch again when filters change
-  const handleFiltersChanged = () => {
-    console.log("Filters updated, reloading hydrants...");
+    // fetch on mount
     fetchHydrants();
-  };
 
-  window.addEventListener("filtersUpdated", handleFiltersChanged);
+    // fetch again when filters change
+    const handleFiltersChanged = () => {
+      console.log("Filters updated, reloading hydrants...");
+      fetchHydrants();
+    };
 
-  return () => {
-    window.removeEventListener("filtersUpdated", handleFiltersChanged);
-  };
-}, [center]); // ✅ still dependent on center if hydrants depend on map center
+    window.addEventListener("filtersUpdated", handleFiltersChanged);
+
+    return () => {
+      window.removeEventListener("filtersUpdated", handleFiltersChanged);
+    };
+  }, [center]); // ✅ still dependent on center if hydrants depend on map center
 
   const handleSelect = async (description: string) => {
     setValue(description, false);
@@ -138,6 +136,8 @@ useEffect(() => {
       const results = await getGeocode({ address: description });
       const { lat, lng } = await getLatLng(results[0]);
       setCenter(new GeoPoint(lat, lng));
+      setCurrentLocation(new GeoPoint(lat, lng));
+      setZoom(14);
       updateStatus("success");
     } catch (error) {
       console.error("Error fetching location:", error);
@@ -213,9 +213,7 @@ useEffect(() => {
       // await updateHydrantLocation(h.id!, updatedHydrant.location);
 
       setHydrants((prev) =>
-        prev.map((hydrant) =>
-          hydrant.id === h.id ? updatedHydrant : hydrant
-        )
+        prev.map((hydrant) => (hydrant.id === h.id ? updatedHydrant : hydrant))
       );
       setMovingId(null);
       setActiveHydrantId(h.id!);
@@ -256,7 +254,7 @@ useEffect(() => {
       {/* Map */}
       {center && (
         <div className="w-full mt-6">
-          <FiltersBar/>
+          <FiltersBar />
           <GoogleMap
             mapContainerStyle={{ width: "100%", height: "400px" }}
             onLoad={(map) => {
@@ -282,7 +280,6 @@ useEffect(() => {
               icon={FireTruck}
             />
 
-            
             {hydrants.map((h) => (
               <Marker
                 key={h.id}
@@ -294,7 +291,9 @@ useEffect(() => {
                   lng: h.location.longitude,
                 }}
                 icon={movingId == h.id ? enlargedIcon : normalIcon}
-                draggable={localStorage.getItem("isAdmin") == "true" && movingId === h.id}
+                draggable={
+                  localStorage.getItem("isAdmin") == "true" && movingId === h.id
+                }
                 onDragStart={() => {
                   const marker = markersRef.current[h.id!];
                   if (!marker) return;
@@ -327,8 +326,10 @@ useEffect(() => {
                     lng: h.location.longitude,
                   });
                   setTimeout(() => {
-                  setCurrentLocation(new GeoPoint(h.location.latitude, h.location.longitude));
-                  }, 1000);
+                    setCurrentLocation(
+                      new GeoPoint(h.location.latitude, h.location.longitude)
+                    );
+                  }, 200);
                   setActiveHydrantId(h.id!);
                 }}
               >
@@ -341,87 +342,122 @@ useEffect(() => {
                     }}
                     onCloseClick={() => setActiveHydrantId(null)}
                   >
-                <div className="bg-gray-600 text-xs p-2 rounded-md text-white">
-                  {h.id! == movingId ? (
-                    <div >
-                      <p className="text-yellow-300">
-                        Apasa lung hidrantul si trage usor in locatia dorita apoi salveaza
-                      </p>
-                      <button
-                        className="px-4 py-1 text-xs bg-gray-400 m-2 hover:bg-red-700 rounded-md"
-                        onClick={async () => {
-                          if (markersRef.current[h.id!]) {
-                            markersRef.current[h.id!]!.setPosition(
-                              new google.maps.LatLng(h.location.latitude, h.location.longitude)
-                            );
-                          }
-                          setMovingId(null);
-                        }}
-                      >
-                        Anuleaza
-                      </button>
-                      <button
-                        className="px-4 py-1 text-xs bg-green-600 m-2 hover:bg-green-700 rounded-md"
-                        onClick={async () => {
-                          setCurrentLocation(new GeoPoint(markersRef.current[h.id!]!.getPosition()!.lat(), markersRef.current[h.id!]!.getPosition()!.lng()));
-                          saveNewLocation(h, markersRef.current[h.id!]!);
-                          setActiveHydrantId(null);
-                        }}
-                      >
-                        Salveaza
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <p>
-                        <strong>Tip:</strong> {h.tipul}
-                      </p>
-                      <p>
-                        <strong>Presiune:</strong> {h.presiune}
-                      </p>
-                      <p>
-                        <strong>Funcțional:</strong>{" "}
-                        {h.functional ? "✅" : "❌"}
-                      </p>
-                      <p>
-                        <strong>Ultima actualizare:</strong>{" "}
-                        {h.lastUpdated
-                          ? new Date(h.lastUpdated).toLocaleString()
-                          : "N/A"}
-                      </p>
-                      {localStorage.getItem("isAdmin") == "true" && (
-                          <div className="flex flex-row m-2 gap-2">
+                    <div className="bg-gray-600 text-xs p-1 rounded-md text-white">
+                      {h.id! == movingId ? (
+                        <div>
+                          <p className="text-yellow-300">
+                            Apasa lung hidrantul si trage usor in locatia dorita
+                            apoi salveaza
+                          </p>
                           <button
-                            className="px-2 py-1 text-xs bg-gray-500 rounded-md"
-                            onClick={() => {
-                              setMovingId(h.id!);
-                              mapRef.current?.panTo({
-                                lat: h.location.latitude,
-                                lng: h.location.longitude,
-                              });
-
-                              mapRef.current?.setZoom(18);
-
-                              // await than set current location
-                               
-                              setTimeout(() => {
-                               setCurrentLocation(new GeoPoint(h.location.latitude, h.location.longitude));
-                              }, 500);
+                            className="px-4 py-1 text-xs bg-gray-400 m-2 hover:bg-red-700 rounded-md"
+                            onClick={async () => {
+                              if (markersRef.current[h.id!]) {
+                                markersRef.current[h.id!]!.setPosition(
+                                  new google.maps.LatLng(
+                                    h.location.latitude,
+                                    h.location.longitude
+                                  )
+                                );
+                              }
+                              setMovingId(null);
+                              mapRef.current?.setZoom(17);
                             }}
                           >
-                            Ajusteaza pozitia
+                            Anuleaza
                           </button>
-                            <button
-                              className="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 rounded-md"
-                              onClick={() => handleEditHydrant(h)}
-                            >
-                              Editează
-                            </button>
+                          <button
+                            className="px-4 py-1 text-xs bg-green-600 m-2 hover:bg-green-700 rounded-md"
+                            onClick={async () => {
+                              setCurrentLocation(
+                                new GeoPoint(
+                                  markersRef.current[
+                                    h.id!
+                                  ]!.getPosition()!.lat(),
+                                  markersRef.current[
+                                    h.id!
+                                  ]!.getPosition()!.lng()
+                                )
+                              );
+                              saveNewLocation(h, markersRef.current[h.id!]!);
+                              setActiveHydrantId(null);
+                            }}
+                          >
+                            Salveaza
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <p>
+                            <strong>Tip:</strong> {h.tipul}
+                          </p>
+                          <p>
+                            <strong>Presiune:</strong> {h.presiune}
+                          </p>
+                          <p>
+                            <strong>Funcțional:</strong>{" "}
+                            {h.functional ? "✅" : "❌"}
+                          </p>
+                          <p>
+                            <strong>Ultima actualizare:</strong>{" "}
+                            {h.lastUpdated
+                              ? new Date(h.lastUpdated).toLocaleDateString(
+                                  "ro-RO",
+                                  {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  }
+                                ) +
+                                " " +
+                                new Date(h.lastUpdated).toLocaleTimeString(
+                                  "ro-RO",
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )
+                              : "N/A"}
+                          </p>
+
+                          {localStorage.getItem("isAdmin") == "true" && (
+                            <div className="flex flex-row m-1 gap-2">
+                              <button
+                                className="px-2 py-1 text-xs bg-gray-500 rounded-md"
+                                onClick={() => {
+                                  setMovingId(h.id!);
+                                  mapRef.current?.panTo({
+                                    lat: h.location.latitude,
+                                    lng: h.location.longitude,
+                                  });
+
+                                  mapRef.current?.setZoom(19);
+
+                                  // await than set current location
+
+                                  setTimeout(() => {
+                                    setCurrentLocation(
+                                      new GeoPoint(
+                                        h.location.latitude,
+                                        h.location.longitude
+                                      )
+                                    );
+                                  }, 500);
+                                }}
+                              >
+                                Ajusteaza pozitia
+                              </button>
+                              <button
+                                className="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 rounded-md"
+                                onClick={() => handleEditHydrant(h)}
+                              >
+                                Editează
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
                   </InfoWindow>
                 )}
               </Marker>
@@ -437,19 +473,22 @@ useEffect(() => {
                     h.id === updatedHydrant.id ? updatedHydrant : h
                   )
                 );
-                setCurrentLocation(new GeoPoint(updatedHydrant.location.latitude, updatedHydrant.location.longitude));
+                setCurrentLocation(
+                  new GeoPoint(
+                    updatedHydrant.location.latitude,
+                    updatedHydrant.location.longitude
+                  )
+                );
                 setActiveHydrantId(updatedHydrant.id!);
                 setZoom(16);
               }}
               onHydrantDeleted={(hydrantId) => {
-                setHydrants((prev) => prev.filter((h) => h.id !== hydrantId));
                 setActiveHydrantId(null);
-                setZoom(14);
+                setHydrants((prev) => prev.filter((h) => h.id !== hydrantId));
               }}
               onClose={() => {
-                setEditingHydrant(null)
-               }
-              }
+                setEditingHydrant(null);
+              }}
             />
           )}
           <Settings />
@@ -457,17 +496,18 @@ useEffect(() => {
           <AddHydrantDialog
             onHydrantAdded={(hydrant) => {
               setHydrants((prev) => [...prev, hydrant]);
-              setCurrentLocation(new GeoPoint(hydrant.location.latitude, hydrant.location.longitude));
+              setCurrentLocation(
+                new GeoPoint(
+                  hydrant.location.latitude,
+                  hydrant.location.longitude
+                )
+              );
               setActiveHydrantId(hydrant.id!);
               setZoom(16);
             }}
           />
 
-          {showLogin && (
-            <LoginDialog
-              onClose={() => setShowLogin(false)}
-            />
-          )}
+          {showLogin && <LoginDialog onClose={() => setShowLogin(false)} />}
         </div>
       )}
     </div>

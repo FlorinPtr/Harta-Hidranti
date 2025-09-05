@@ -45,7 +45,7 @@ export default function Home() {
           <div className="mt-4 p-2 text-center">
             <p>
               {showFullText
-                ? description + "  Este un proiect open-source care își propune să ajute pompierii să aibă acces rapid la informații despre hidranți, facilitând astfel intervențiile în caz de urgență. In acest moment este functionala doar in orașul Lupeni."
+                ? description + "  Este un proiect open-source care își propune să ajute pompierii să aibă acces rapid la informații despre hidranți, facilitând astfel intervențiile în caz de urgență. Orice admin sau pompier poate adăuga sau edita hidranți, contribuind la o bază de date actualizată și precisă. Proiectul este momentan in faza de testare beta."
                 : description}
             </p>
             <button
