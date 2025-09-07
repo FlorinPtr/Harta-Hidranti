@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
 import SearchBarWithMap from "./components/SearchBarWithMap";
+import Head from "next/head";
 
 export default function Home() {
   const [showFullText, setShowFullText] = useState(false);
@@ -14,6 +15,13 @@ export default function Home() {
     "Această platformă este destinată adăugării, editării și identificării pe hartă a hidranților dintr-o anumită zonă.";
   return (
     <div>
+       <Head>
+        <title>Harta Hidranti</title>
+        <meta name="description" content="Aplicație pentru localizarea hidranților" />
+        <meta name="theme-color" content="#1e3a8a" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      </Head>
     <main
       className="flex flex-col items-center min-h-screen bg-cover bg-center text-white"
       style={{

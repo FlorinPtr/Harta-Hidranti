@@ -6,30 +6,12 @@ interface GoToAddressButtonProps {
 }
 
 export default function GoToAddressButton({ lat, lng }: GoToAddressButtonProps) {
+
   const handleClick = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocația nu este suportată de browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const userLat = pos.coords.latitude;
-        const userLng = pos.coords.longitude;
-
-        // Link Google Maps cu plecare din coordonatele utilizatorului
-        const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${lat},${lng}&travelmode=driving`;
-
-        window.open(mapsUrl, "_blank");
-      },
-      (err) => {
-        console.error("Eroare la obținerea locației utilizatorului:", err);
-        // Dacă utilizatorul refuză accesul la locație, se deschide doar destinația
-        const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-        window.open(fallbackUrl, "_blank");
+        const destinationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+        window.open(destinationUrl, "_blank");
       }
-    );
-  };
+    
 
   return (
     <button
