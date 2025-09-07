@@ -2,13 +2,13 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Hartă Hidranți',
-    short_name: 'Hidranți',
+    name: 'Harta Hidranți',
+    short_name: 'Harta Hidranți',
     description: 'O aplicatie pentru cautare, adaugare si editare hidranti.',
     start_url: '/',
     display: 'standalone',
     background_color: '#fff',
-    theme_color: '#000',
+    theme_color: '#da3939ff',
     icons: [
       {
         src: '/favicon.ico',

@@ -249,10 +249,10 @@ function LoadedSearchBarWithMap({
 
       {/* Map */}
       {center && (
-        <div className="w-full mt-6">
+        <div className="w-full mt-4">
           <FiltersBar />
           <GoogleMap
-            mapContainerStyle={{ width: "100%", height: "400px" }}
+            mapContainerStyle={{ width: "100%", height: "500px" }}
             onLoad={(map) => {
               mapRef.current = map;
               map.addListener("zoom_changed", () => {
