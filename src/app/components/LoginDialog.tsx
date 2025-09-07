@@ -52,7 +52,7 @@ export default function LoginDialog({ onClose }: LoginDialogProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1 text-sm bg-gray-300 rounded-md"
+              className="px-3 py-1 text-sm bg-gray-300 text-black rounded-md"
             >
               Anulează
             </button>

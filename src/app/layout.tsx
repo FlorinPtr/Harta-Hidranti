@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Head from "next/head";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,6 +25,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ro">
+       <head>
+        <title>Harta Hidranti</title>
+        <meta name="description" content="Aplicație pentru localizarea hidranților" />
+        <meta name="theme-color" content="#1e3a8a" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
