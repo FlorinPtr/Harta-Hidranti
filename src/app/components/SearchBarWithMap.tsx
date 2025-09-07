@@ -9,16 +9,17 @@ import {
   Marker,
   useLoadScript,
 } from "@react-google-maps/api";
-import { Search } from "lucide-react";
+import { Edit, Move, Search } from "lucide-react";
 import { Hidrant, saveUpdatedHydrantToFirestore } from "../models/hidrant";
 import { getAllHydrants, getHydrantsNearby } from "../services/hidranti-zona";
-import { GeoPoint, Timestamp } from "firebase/firestore";
+import { GeoPoint } from "firebase/firestore";
 import AddHydrantDialog from "./AddHydrantDialog";
 import React from "react";
 import EditHydrantDialog from "./EditHydrantDialog";
 import LoginDialog from "./LoginDialog";
 import Settings from "./Settings";
 import FiltersBar from "./FiltersBar";
+import GoToAddressButton from "./GoToAdressButton";
 
 const libraries: "places"[] = ["places"];
 
@@ -61,6 +62,7 @@ function LoadedSearchBarWithMap({
   const markersRef = useRef<{ [id: string]: google.maps.Marker | null }>({});
   const currentMarkerRef = useRef<google.maps.Marker | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
+  const [iconSize, setIconSize] = useState(26); // initial icon size
 
   // La mount, citim din localStorage
 
@@ -134,6 +136,7 @@ function LoadedSearchBarWithMap({
 
     try {
       const results = await getGeocode({ address: description });
+      console.log("Geocode results:", JSON.stringify(results));
       const { lat, lng } = await getLatLng(results[0]);
       setCenter(new GeoPoint(lat, lng));
       setCurrentLocation(new GeoPoint(lat, lng));
@@ -150,19 +153,12 @@ function LoadedSearchBarWithMap({
     scaledSize: new google.maps.Size(60, 60),
   };
 
-  type HydrantMarkerProps = {
-    h: Hidrant;
-    isAdmin: boolean;
-    activeHydrantId: string | null;
-    setActiveHydrantId: (id: string | null) => void;
-  };
-
   // icons
-  const normalIcon: google.maps.Icon = {
+  const dynamicIcon = (size: number): google.maps.Icon => ({
     url: "/hydrant.svg",
-    scaledSize: new google.maps.Size(32, 32),
-    anchor: new google.maps.Point(20, 40),
-  };
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(size / 2, size),
+  });
 
   const enlargedIcon: google.maps.Icon = {
     url: "/hydrant.svg",
@@ -230,8 +226,8 @@ function LoadedSearchBarWithMap({
             value={value}
             onChange={handleInput}
             disabled={!ready}
-            placeholder="Caută oraș sau obiectiv"
-            className="flex-1 outline-none text-gray-700 placeholder-gray-400"
+            placeholder="Caută adresa, oraș sau obiectiv"
+            className="flex-1 outline-none text-gray-800 placeholder-gray-500"
           />
           <Search size={20} className="text-gray-500" />
         </div>
@@ -259,7 +255,17 @@ function LoadedSearchBarWithMap({
             mapContainerStyle={{ width: "100%", height: "400px" }}
             onLoad={(map) => {
               mapRef.current = map;
-            }}
+              map.addListener("zoom_changed", () => {
+                const zoom = map.getZoom() ?? 10;
+                const size = Math.max(16, Math.min(zoom * 2, 64)); // scalare simplă
+                setCurrentLocation(mapRef.current?.getCenter() ? new GeoPoint(
+                  mapRef.current?.getCenter()!.lat(),
+                  mapRef.current?.getCenter()!.lng()
+                ) : null);
+                setIconSize(size);
+
+              });
+            }}  
             center={
               currentLocation
                 ? {
@@ -290,7 +296,7 @@ function LoadedSearchBarWithMap({
                   lat: h.location.latitude,
                   lng: h.location.longitude,
                 }}
-                icon={movingId == h.id ? enlargedIcon : normalIcon}
+                icon={movingId == h.id ? enlargedIcon : dynamicIcon(iconSize)}
                 draggable={
                   localStorage.getItem("isAdmin") == "true" && movingId === h.id
                 }
@@ -315,7 +321,7 @@ function LoadedSearchBarWithMap({
                 }}
                 onDragEnd={() => {
                   if (currentMarkerRef.current) {
-                    currentMarkerRef.current.setIcon(normalIcon);
+                    currentMarkerRef.current.setIcon(dynamicIcon(iconSize));
                     currentMarkerRef.current = null;
                   }
                   setDragging(false);
@@ -419,42 +425,49 @@ function LoadedSearchBarWithMap({
                                 )
                               : "N/A"}
                           </p>
+                          <div className="flex flex-row m-1 items-center">
+                            <GoToAddressButton
+                              lat={h.location.latitude}
+                              lng={h.location.longitude}
+                            />
 
-                          {localStorage.getItem("isAdmin") == "true" && (
-                            <div className="flex flex-row m-1 gap-2">
-                              <button
-                                className="px-2 py-1 text-xs bg-gray-500 rounded-md"
-                                onClick={() => {
-                                  setMovingId(h.id!);
-                                  mapRef.current?.panTo({
-                                    lat: h.location.latitude,
-                                    lng: h.location.longitude,
-                                  });
+                            {localStorage.getItem("isAdmin") == "true" && (
+                              <div className="flex flex-row ml-4 gap-4">
+                                <button
+                                  className="px-4 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 rounded-md"
+                                  onClick={() => {
+                                    mapRef.current?.panTo({
+                                      lat: h.location.latitude,
+                                      lng: h.location.longitude,
+                                    });
 
-                                  mapRef.current?.setZoom(19);
+                                    mapRef.current?.setZoom(19);
 
-                                  // await than set current location
+                                    // await than set current location
 
-                                  setTimeout(() => {
-                                    setCurrentLocation(
-                                      new GeoPoint(
-                                        h.location.latitude,
-                                        h.location.longitude
-                                      )
-                                    );
-                                  }, 500);
-                                }}
-                              >
-                                Ajusteaza pozitia
-                              </button>
-                              <button
-                                className="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 rounded-md"
-                                onClick={() => handleEditHydrant(h)}
-                              >
-                                Editează
-                              </button>
-                            </div>
-                          )}
+                                    setTimeout(() => {
+                                      setMovingId(h.id!);
+
+                                      setCurrentLocation(
+                                        new GeoPoint(
+                                          h.location.latitude,
+                                          h.location.longitude
+                                        )
+                                      );
+                                    }, 500);
+                                  }}
+                                >
+                                  <Move className="w-4 h-4" />
+                                </button>
+                                <button
+                                  className="px-4 py-1 text-xs bg-red-400 hover:bg-red-600 rounded-md"
+                                  onClick={() => handleEditHydrant(h)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -496,14 +509,17 @@ function LoadedSearchBarWithMap({
           <AddHydrantDialog
             onHydrantAdded={(hydrant) => {
               setHydrants((prev) => [...prev, hydrant]);
-              setCurrentLocation(
-                new GeoPoint(
-                  hydrant.location.latitude,
-                  hydrant.location.longitude
-                )
-              );
-              setActiveHydrantId(hydrant.id!);
               setZoom(16);
+
+              setTimeout(() => {
+                setCurrentLocation(
+                  new GeoPoint(
+                    hydrant.location.latitude,
+                    hydrant.location.longitude
+                  )
+                );
+                setActiveHydrantId(hydrant.id!);
+              }, 500);
             }}
           />
 
