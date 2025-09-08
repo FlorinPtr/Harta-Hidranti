@@ -263,10 +263,8 @@ function LoadedSearchBarWithMap({
               map.addListener("zoom_changed", () => {
                 const zoom = map.getZoom() ?? 10;
                 const size = Math.max(14, Math.min(zoom * 2, 64)); // scalare simplă
-                setIconSize(size);
-              });
-              map.addListener("dragend", () => {
-                setCurrentLocation(
+
+                  setCurrentLocation(
                   mapRef.current?.getCenter()
                     ? new GeoPoint(
                         mapRef.current?.getCenter()!.lat(),
@@ -274,6 +272,11 @@ function LoadedSearchBarWithMap({
                       )
                     : null
                 );
+                
+                setIconSize(size);
+              });
+              map.addListener("dragend", () => {
+              
               });
             }}
             center={
