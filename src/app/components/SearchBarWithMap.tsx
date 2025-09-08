@@ -10,7 +10,7 @@ import {
   useLoadScript,
 } from "@react-google-maps/api";
 import { Edit, Move, Search } from "lucide-react";
-import { Hidrant, saveUpdatedHydrantToFirestore } from "../models/hidrant";
+import { Hidrant, saveUpdatedHydrantToFirestore, Type } from "../models/hidrant";
 import { getAllHydrants, getHydrantsNearby } from "../services/hidranti-zona";
 import { GeoPoint } from "firebase/firestore";
 import AddHydrantDialog from "./AddHydrantDialog";
@@ -154,17 +154,22 @@ function LoadedSearchBarWithMap({
   };
 
   // icons
-  const dynamicIcon = (size: number): google.maps.Icon => ({
-    url: "/hydrant.svg",
-    scaledSize: new google.maps.Size(size, size),
-    anchor: new google.maps.Point(size / 2, size),
-  });
+ const dynamicIcon = (size: number, tipul: Type): google.maps.Icon => {
+    // Calculate the icon size based on the type
+    const iconSize = tipul === Type.SUPRATERAN ? size : tipul === Type.INTERIOR ? size * 0.6 : size * 0.6;
 
-  const enlargedIcon: google.maps.Icon = {
-    url: "/hydrant.svg",
+    return {
+        url: tipul === Type.SUPRATERAN ? "/upperground_hydrant.png" : tipul === Type.INTERIOR ? "/interior_hydrant.png" : "/underground_hydrant.png",
+        scaledSize: new google.maps.Size(iconSize, iconSize),
+        anchor: new google.maps.Point(iconSize / 2, iconSize),
+    };
+};
+
+  const enlargedIcon = (tipul: Type) : google.maps.Icon => ({
+    url: tipul == Type.SUPRATERAN? "/upperground_hydrant.png": tipul == Type.INTERIOR? "/interior_hydrant.png" : "/underground_hydrant.png",
     scaledSize: new google.maps.Size(45, 45),
     anchor: new google.maps.Point(30, 60),
-  };
+  });
 
   function haversineDistance(a: google.maps.LatLng, b: google.maps.LatLng) {
     const R = 6371e3; // Earth radius meters
@@ -257,15 +262,20 @@ function LoadedSearchBarWithMap({
               mapRef.current = map;
               map.addListener("zoom_changed", () => {
                 const zoom = map.getZoom() ?? 10;
-                const size = Math.max(16, Math.min(zoom * 2, 64)); // scalare simplă
-                setCurrentLocation(mapRef.current?.getCenter() ? new GeoPoint(
-                  mapRef.current?.getCenter()!.lat(),
-                  mapRef.current?.getCenter()!.lng()
-                ) : null);
+                const size = Math.max(14, Math.min(zoom * 2, 64)); // scalare simplă
                 setIconSize(size);
-
               });
-            }}  
+              map.addListener("dragend", () => {
+                setCurrentLocation(
+                  mapRef.current?.getCenter()
+                    ? new GeoPoint(
+                        mapRef.current?.getCenter()!.lat(),
+                        mapRef.current?.getCenter()!.lng()
+                      )
+                    : null
+                );
+              });
+            }}
             center={
               currentLocation
                 ? {
@@ -296,7 +306,7 @@ function LoadedSearchBarWithMap({
                   lat: h.location.latitude,
                   lng: h.location.longitude,
                 }}
-                icon={movingId == h.id ? enlargedIcon : dynamicIcon(iconSize)}
+                icon={movingId == h.id ? enlargedIcon(h.tipul) : dynamicIcon(iconSize, h.tipul)}
                 draggable={
                   localStorage.getItem("isAdmin") == "true" && movingId === h.id
                 }
@@ -321,7 +331,7 @@ function LoadedSearchBarWithMap({
                 }}
                 onDragEnd={() => {
                   if (currentMarkerRef.current) {
-                    currentMarkerRef.current.setIcon(dynamicIcon(iconSize));
+                    currentMarkerRef.current.setIcon(dynamicIcon(iconSize, h.tipul));
                     currentMarkerRef.current = null;
                   }
                   setDragging(false);
