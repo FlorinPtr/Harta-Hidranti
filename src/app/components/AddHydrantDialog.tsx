@@ -1,3 +1,5 @@
+"use client"
+
 import { SetStateAction, useEffect, useState } from "react";
 import { firestore } from "../utils/firebase";
 import { collection, addDoc, serverTimestamp, GeoPoint } from "firebase/firestore";

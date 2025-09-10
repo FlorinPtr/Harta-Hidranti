@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react";
 import { firestore } from "../utils/firebase";
 import { doc, updateDoc, deleteDoc, GeoPoint } from "firebase/firestore";

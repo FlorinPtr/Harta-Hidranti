@@ -130,6 +130,30 @@ function LoadedSearchBarWithMap({
     };
   }, [center]); // ✅ still dependent on center if hydrants depend on map center
 
+  useEffect(() => {
+    // if storage has center, use it
+    const savedLat = localStorage.getItem("centerLat");
+    const savedLng = localStorage.getItem("centerLng");
+    const lastSearchTimestamp = localStorage.getItem("lastSearchTimestamp");
+    const savedTime = lastSearchTimestamp ? parseInt(lastSearchTimestamp) : 0;
+    const now = Date.now();
+    // if last search was more than 24h ago, ignore saved location
+    if (now - savedTime > 24 * 60 * 60 * 1000) {
+      console.log("Last search is null or was more than 24h ago, ignoring saved location");
+      return;
+    }
+    if (savedLat && savedLng) {
+      const lat = parseFloat(savedLat);
+      const lng = parseFloat(savedLng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        const savedCenter = new GeoPoint(lat, lng);
+        setCenter(savedCenter);
+        updateStatus("success");
+        console.log("Using saved center from localStorage:", { lat, lng});
+      }
+    }
+  }, []);
+
   const handleSelect = async (description: string) => {
     setValue(description, false);
     clearSuggestions();
@@ -139,6 +163,9 @@ function LoadedSearchBarWithMap({
       console.log("Geocode results:", JSON.stringify(results));
       const { lat, lng } = await getLatLng(results[0]);
       setCenter(new GeoPoint(lat, lng));
+      localStorage.setItem("centerLat", lat.toString());
+      localStorage.setItem("centerLng", lng.toString());
+      localStorage.setItem("lastSearchTimestamp", Date.now().toString());
       setCurrentLocation(new GeoPoint(lat, lng));
       setZoom(14);
       updateStatus("success");
@@ -272,7 +299,7 @@ function LoadedSearchBarWithMap({
                       )
                     : null
                 );
-                
+
                 setIconSize(size);
               });
               map.addListener("dragend", () => {
