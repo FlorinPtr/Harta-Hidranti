@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isValidUser } from "./LoginHelper";
 
 interface LoginDialogProps {
   onClose: () => void;
@@ -12,7 +13,7 @@ export default function LoginDialog({ onClose }: LoginDialogProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Hardcoded admin credentials
-    if (username === "adminH" && password === "adminH123") {
+    if (isValidUser(username, password)) {
         localStorage.setItem("isAdmin", "true");
         window.dispatchEvent(new Event("isAdminChanged")); // Notify other components
         setError("");

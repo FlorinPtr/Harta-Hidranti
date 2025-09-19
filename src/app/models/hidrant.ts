@@ -1,6 +1,8 @@
 import { collection, doc, GeoPoint, updateDoc } from "firebase/firestore";
 import { firestore } from "../utils/firebase";
 import { geohashForLocation, distanceBetween, geohashQueryBounds } from "geofire-common";
+import {Operator } from "../components/LoginHelper";
+
 
 export enum Pressure {
   LOW = "Slabă",
@@ -15,6 +17,12 @@ export enum Type {
   INTERIOR = "Interior",
 }
 
+export enum Administrator {
+  COMPANIA_DE_APE = "Compania de apă",
+  PRIMARIA = "Primăria",
+  PRIVAT = "Privat",
+}
+
 export interface Hidrant {
   id?: string;
   location: GeoPoint;   // poziția GPS
@@ -24,6 +32,8 @@ export interface Hidrant {
   lastUpdated: number;
   tipul: Type;
   presiune: Pressure;
+  administrator?: string;
+  operator?: string;
 }
 
 // Convert Hidrant to Firestore-friendly JSON including geohash
@@ -39,6 +49,8 @@ export function toJSON(h: Hidrant): Record<string, unknown> {
     lastUpdated: h.lastUpdated,
     tipul: h.tipul,
     presiune: h.presiune,
+    administrator: h.administrator,
+    operator: h.operator
   };
 }
 
@@ -54,16 +66,19 @@ export function fromJSON(data: Record<string, unknown>): Hidrant {
     lastUpdated: data.lastUpdated as number,
     tipul: data.tipul as Type,
     presiune: data.presiune as Pressure,
+    administrator: data.administrator as Administrator,
+    operator: data.operator as string | undefined
   };
 }
 
 
 // Save updates to Firestore, automatically updating lastUpdated and geohash
-export async function saveUpdatedHydrantToFirestore(h: Hidrant): Promise<boolean> {
+export async function saveUpdatedHydrantToFirestore(h: Hidrant, operator: string): Promise<boolean> {
   try {
     const hydrantRef = doc(firestore, "hydrants", h.id!);
-    const data = toJSON({ ...h, lastUpdated: Date.now() });
+    const data = toJSON({ ...h, lastUpdated: Date.now(), operator: operator });
     await updateDoc(hydrantRef, data as Partial<Hidrant>);
+    console.log("Updated hydrant: " + JSON.stringify(data));
     return true;
   } catch (err) {
     console.error("Error updating hydrant:", err);

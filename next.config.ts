@@ -9,5 +9,4 @@ const withPWA = require("next-pwa")({
 
 module.exports = withPWA({
   reactStrictMode: true,
-  swcMinify: true, // Recommended for better performance
 });

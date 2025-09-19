@@ -1,13 +1,22 @@
-"use client"
+"use client";
 
 import { useState } from "react";
 import { firestore } from "../utils/firebase";
-import { doc, updateDoc, deleteDoc, GeoPoint } from "firebase/firestore";
-import { Hidrant, Pressure, Type, saveUpdatedHydrantToFirestore, toJSON } from "../models/hidrant";
+import { doc, deleteDoc, GeoPoint } from "firebase/firestore";
+import {
+  Administrator,
+  Hidrant,
+  Pressure,
+  Type,
+  saveUpdatedHydrantToFirestore,
+} from "../models/hidrant";
 import GetLocationComponent from "./GetLocationComponent";
+import { Operator } from "./LoginHelper";
+
+
 
 type EditHydrantDialogProps = {
-  hydrant: Hidrant; // hidrantul existent care trebuie editat
+  hydrant: Hidrant;
   isOpen: boolean;
   onClose: () => void;
   onHydrantUpdated: (hydrant: Hidrant) => void;
@@ -26,6 +35,12 @@ export default function EditHydrantDialog({
   const [functional, setFunctional] = useState(hydrant.functional);
   const [type, setType] = useState<Type>(hydrant.tipul);
   const [pressure, setPressure] = useState<Pressure>(hydrant.presiune);
+  const [administrator, setAdministrator] = useState<Administrator>(
+    (hydrant.administrator as Administrator) || Administrator.COMPANIA_DE_APE
+  );
+
+  // Popup state for delete confirmation
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -36,6 +51,7 @@ export default function EditHydrantDialog({
         functional,
         tipul: type,
         presiune: pressure,
+        administrator,
         lastUpdated: Date.now(),
       };
 
@@ -43,28 +59,23 @@ export default function EditHydrantDialog({
         console.error("Hydrant is missing ID, cannot update!");
         return;
       }
-
-     const saved = await saveUpdatedHydrantToFirestore(updatedHydrant);
-        if (!saved) {
-            console.error("Failed to save updated hydrant to Firestore");
-            return;
-        }else{
-
-         onHydrantUpdated(updatedHydrant);
-         onClose();
-        }
-      
+     const operator = localStorage.getItem("operator") as Operator?? Operator.ISU;
+      const saved = await saveUpdatedHydrantToFirestore(updatedHydrant, operator);
+      if (!saved) {
+        console.error("Failed to save updated hydrant to Firestore");
+        return;
+      } else {
+        onHydrantUpdated(updatedHydrant);
+        onClose();
+      }
     } catch (err) {
       console.error("Error updating hydrant:", err);
     }
   }
 
-  async function handleDelete() {
+  async function handleDeleteConfirmed() {
     try {
-      if (!hydrant.id) {
-        
-        return;
-      }
+      if (!hydrant.id) return;
       const hydrantRef = doc(firestore, "hydrants", hydrant.id);
       await deleteDoc(hydrantRef).catch((err) => {
         console.error("Error deleting hydrant:", err);
@@ -74,6 +85,8 @@ export default function EditHydrantDialog({
       onClose();
     } catch (err) {
       console.error("Error deleting hydrant:", err);
+    } finally {
+      setShowConfirmDelete(false);
     }
   }
 
@@ -81,7 +94,8 @@ export default function EditHydrantDialog({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-700 rounded-lg shadow-lg p-6 w-96">
+    <div className="bg-gray-700 rounded-lg shadow-lg w-96 max-h-[90vh] overflow-y-auto p-6">
+
         <h2 className="text-xl font-bold mb-4">Editează hidrant</h2>
         <div className="space-y-2">
           <GetLocationComponent
@@ -126,34 +140,71 @@ export default function EditHydrantDialog({
             <option value="false">Ne-funcțional</option>
           </select>
 
+          <span className="block text-sm text-gray-300">Administrator</span>
+          <select
+            value={administrator}
+            onChange={(e) => setAdministrator(e.target.value as Administrator)}
+            className="w-full border rounded p-2"
+          >
+            <option value={Administrator.COMPANIA_DE_APE}>
+              Compania de apă
+            </option>
+            <option value={Administrator.PRIMARIA}>Primaria</option>
+            <option value={Administrator.PRIVAT}>Privat</option>
+          </select>
+
           <div className="flex justify-between pt-4">
             <button
               type="button"
-              onClick={handleDelete}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              onClick={() => setShowConfirmDelete(true)}
+              className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
             >
               Șterge
             </button>
 
-            <div className="space-x-2">
+            <div className="space-x-1">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border rounded hover:bg-gray-100"
+                className="px-2 py-1 border rounded hover:bg-gray-100"
               >
                 Anulează
               </button>
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
                 onClick={handleSave}
               >
-            
                 Salvează
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ✅ Confirm Delete Modal */}
+      {showConfirmDelete && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-60">
+          <div className="bg-white rounded-lg p-6 w-80 shadow-lg">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Ești sigur că dorești să ștergi acest hidrant?
+            </h3>
+            <div className="flex justify-end space-x-2">
+              <button
+                className="px-4 py-2 text-black border rounded hover:bg-gray-100"
+                onClick={() => setShowConfirmDelete(false)}
+              >
+                Anulează
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                onClick={handleDeleteConfirmed}
+              >
+                Confirmă
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

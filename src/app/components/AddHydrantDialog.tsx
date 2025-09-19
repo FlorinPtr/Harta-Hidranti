@@ -4,10 +4,11 @@ import { SetStateAction, useEffect, useState } from "react";
 import { firestore } from "../utils/firebase";
 import { collection, addDoc, serverTimestamp, GeoPoint } from "firebase/firestore";
 import { Plus } from "lucide-react";
-import { Hidrant, Pressure, toJSON, Type } from "../models/hidrant";
+import { Administrator, Hidrant, Pressure, toJSON, Type } from "../models/hidrant";
 import GetLocationComponent from "./GetLocationComponent";
 import LoginDialog from "./LoginDialog";
 import { geohashForLocation } from "geofire-common";
+import { Operator } from "./LoginHelper";
 
 
 type AddHydrantDialogProps = {
@@ -26,9 +27,8 @@ export default function AddHydrantDialog({
   const [functional, setFunctional] = useState(true);
   const [type, setType] = useState(Type.SUPRATERAN);
   const [pressure, setPressure] = useState<Pressure>(Pressure.GOOD);
-    const [showLogin, setShowLogin] = useState(false);
-
-
+  const [showLogin, setShowLogin] = useState(false);
+  const [administrator, setAdministrator] = useState<Administrator>(Administrator.COMPANIA_DE_APE);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +44,8 @@ export default function AddHydrantDialog({
         tipul: type,
         presiune: pressure,
         lastUpdated: clientSideTimpestamp,
+        operator: localStorage.getItem("operator") as Operator?? Operator.ISU,
+        administrator: administrator
       }
       await addDoc(collection(firestore, "hydrants"), toJSON(newHydrant)).then((docRef) => {
         newHydrant.id = docRef.id; // update new hydrant with docRef ID
@@ -79,7 +81,8 @@ export default function AddHydrantDialog({
       {/* Modal */}
       {open && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-700 rounded-lg shadow-lg p-6 w-96">
+    <div className="bg-gray-700 rounded-lg shadow-lg w-96 max-h-[90vh] overflow-y-auto p-6">
+
             <h2 className="text-xl font-bold mb-4">Adaugă un hidrant</h2>
             <div className="space-y-2">
              <GetLocationComponent
@@ -135,6 +138,19 @@ export default function AddHydrantDialog({
                 <option value="true">Funcțional</option>
                 <option value="false">Ne-funcțional</option>
               </select>
+
+               <span className="block text-sm text-gray-300">Administrator</span>
+                        <select
+                          value={administrator}
+                          onChange={(e) => setAdministrator(e.target.value as Administrator)}
+                          className="w-full border rounded p-2"
+                        >
+                          <option value={Administrator.COMPANIA_DE_APE}>
+                            Compania de apă
+                          </option>
+                          <option value={Administrator.PRIMARIA}>Primăria</option>
+                          <option value={Administrator.PRIVAT}>Privat</option>
+                        </select>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <button

@@ -10,7 +10,11 @@ import {
   useLoadScript,
 } from "@react-google-maps/api";
 import { Edit, Move, Search } from "lucide-react";
-import { Hidrant, saveUpdatedHydrantToFirestore, Type } from "../models/hidrant";
+import {
+  Hidrant,
+  saveUpdatedHydrantToFirestore,
+  Type,
+} from "../models/hidrant";
 import { getAllHydrants, getHydrantsNearby } from "../services/hidranti-zona";
 import { GeoPoint } from "firebase/firestore";
 import AddHydrantDialog from "./AddHydrantDialog";
@@ -20,6 +24,7 @@ import LoginDialog from "./LoginDialog";
 import Settings from "./Settings";
 import FiltersBar from "./FiltersBar";
 import GoToAddressButton from "./GoToAdressButton";
+import { Operator } from "./LoginHelper";
 
 const libraries: "places"[] = ["places"];
 
@@ -139,7 +144,9 @@ function LoadedSearchBarWithMap({
     const now = Date.now();
     // if last search was more than 24h ago, ignore saved location
     if (now - savedTime > 24 * 60 * 60 * 1000) {
-      console.log("Last search is null or was more than 24h ago, ignoring saved location");
+      console.log(
+        "Last search is null or was more than 24h ago, ignoring saved location"
+      );
       return;
     }
     if (savedLat && savedLng) {
@@ -149,7 +156,7 @@ function LoadedSearchBarWithMap({
         const savedCenter = new GeoPoint(lat, lng);
         setCenter(savedCenter);
         updateStatus("success");
-        console.log("Using saved center from localStorage:", { lat, lng});
+        console.log("Using saved center from localStorage:", { lat, lng });
       }
     }
   }, []);
@@ -181,19 +188,34 @@ function LoadedSearchBarWithMap({
   };
 
   // icons
- const dynamicIcon = (size: number, tipul: Type): google.maps.Icon => {
+  const dynamicIcon = (size: number, tipul: Type): google.maps.Icon => {
     // Calculate the icon size based on the type
-    const iconSize = tipul === Type.SUPRATERAN ? size : tipul === Type.INTERIOR ? size * 0.6 : size * 0.6;
+    const iconSize =
+      tipul === Type.SUPRATERAN
+        ? size
+        : tipul === Type.INTERIOR
+        ? size * 0.6
+        : size * 0.6;
 
     return {
-        url: tipul === Type.SUPRATERAN ? "/upperground_hydrant.png" : tipul === Type.INTERIOR ? "/interior_hydrant.png" : "/underground_hydrant.png",
-        scaledSize: new google.maps.Size(iconSize, iconSize),
-        anchor: new google.maps.Point(iconSize / 2, iconSize),
+      url:
+        tipul === Type.SUPRATERAN
+          ? "/upperground_hydrant.png"
+          : tipul === Type.INTERIOR
+          ? "/interior_hydrant.png"
+          : "/underground_hydrant.png",
+      scaledSize: new google.maps.Size(iconSize, iconSize),
+      anchor: new google.maps.Point(iconSize / 2, iconSize),
     };
-};
+  };
 
-  const enlargedIcon = (tipul: Type) : google.maps.Icon => ({
-    url: tipul == Type.SUPRATERAN? "/upperground_hydrant.png": tipul == Type.INTERIOR? "/interior_hydrant.png" : "/underground_hydrant.png",
+  const enlargedIcon = (tipul: Type): google.maps.Icon => ({
+    url:
+      tipul == Type.SUPRATERAN
+        ? "/upperground_hydrant.png"
+        : tipul == Type.INTERIOR
+        ? "/interior_hydrant.png"
+        : "/underground_hydrant.png",
     scaledSize: new google.maps.Size(45, 45),
     anchor: new google.maps.Point(30, 60),
   });
@@ -229,8 +251,8 @@ function LoadedSearchBarWithMap({
         location: new GeoPoint(pos.lat(), pos.lng()),
         lastUpdated: Date.now(),
       };
-
-      const saved = await saveUpdatedHydrantToFirestore(updatedHydrant);
+      const operator = localStorage.getItem("operator") as Operator?? Operator.ISU;
+      const saved = await saveUpdatedHydrantToFirestore(updatedHydrant, operator);
       if (!saved) {
         console.error("Failed to save updated hydrant to Firestore");
         return;
@@ -291,7 +313,7 @@ function LoadedSearchBarWithMap({
                 const zoom = map.getZoom() ?? 10;
                 const size = Math.max(14, Math.min(zoom * 2, 64)); // scalare simplă
 
-                  setCurrentLocation(
+                setCurrentLocation(
                   mapRef.current?.getCenter()
                     ? new GeoPoint(
                         mapRef.current?.getCenter()!.lat(),
@@ -302,9 +324,7 @@ function LoadedSearchBarWithMap({
 
                 setIconSize(size);
               });
-              map.addListener("dragend", () => {
-              
-              });
+              map.addListener("dragend", () => {});
             }}
             center={
               currentLocation
@@ -336,7 +356,11 @@ function LoadedSearchBarWithMap({
                   lat: h.location.latitude,
                   lng: h.location.longitude,
                 }}
-                icon={movingId == h.id ? enlargedIcon(h.tipul) : dynamicIcon(iconSize, h.tipul)}
+                icon={
+                  movingId == h.id
+                    ? enlargedIcon(h.tipul)
+                    : dynamicIcon(iconSize, h.tipul)
+                }
                 draggable={
                   localStorage.getItem("isAdmin") == "true" && movingId === h.id
                 }
@@ -361,7 +385,9 @@ function LoadedSearchBarWithMap({
                 }}
                 onDragEnd={() => {
                   if (currentMarkerRef.current) {
-                    currentMarkerRef.current.setIcon(dynamicIcon(iconSize, h.tipul));
+                    currentMarkerRef.current.setIcon(
+                      dynamicIcon(iconSize, h.tipul)
+                    );
                     currentMarkerRef.current = null;
                   }
                   setDragging(false);
@@ -433,19 +459,25 @@ function LoadedSearchBarWithMap({
                           </button>
                         </div>
                       ) : (
-                        <div>
+                        <div className="text-[14px] gap-1">
                           <p>
                             <strong>Tip:</strong> {h.tipul}
                           </p>
-                          <p>
-                            <strong>Presiune:</strong> {h.presiune}
+                          <div className="flex flex-col text-[14px] gap-0">
+                            <p>
+                              <strong>Funcțional:</strong>{" "}
+                              {h.functional ? "✅" : "❌"}
+                            </p>
+                            <p>
+                              <strong>Presiune:</strong> {h.presiune}
+                            </p>
+                          </div>
+                          <p className="text-[10px]">
+                            <strong>Administrator:</strong>{" "}
+                            {h.administrator ?? "Necunoscut"}
                           </p>
-                          <p>
-                            <strong>Funcțional:</strong>{" "}
-                            {h.functional ? "✅" : "❌"}
-                          </p>
-                          <p>
-                            <strong>Ultima actualizare:</strong>{" "}
+                          <p className="text-[10px]">
+                            <strong>Ultima Actualizare:</strong>{" "}
                             {h.lastUpdated
                               ? new Date(h.lastUpdated).toLocaleDateString(
                                   "ro-RO",
@@ -465,6 +497,11 @@ function LoadedSearchBarWithMap({
                                 )
                               : "N/A"}
                           </p>
+                          <p className="text-[10px]">
+                            <strong>Actualizat de: </strong>{" "}
+                            {h.operator ?? "I.S.U."}
+                          </p>
+
                           <div className="flex flex-row m-1 items-center">
                             <GoToAddressButton
                               lat={h.location.latitude}
