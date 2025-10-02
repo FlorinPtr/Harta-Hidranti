@@ -76,6 +76,9 @@ export function fromJSON(data: Record<string, unknown>): Hidrant {
 export async function saveUpdatedHydrantToFirestore(h: Hidrant, operator: string): Promise<boolean> {
   try {
     const hydrantRef = doc(firestore, "hydrants", h.id!);
+    if(h.administrator === undefined) {
+      h.administrator = Administrator.COMPANIA_DE_APE; // default value
+    }
     const data = toJSON({ ...h, lastUpdated: Date.now(), operator: operator });
     await updateDoc(hydrantRef, data as Partial<Hidrant>);
     console.log("Updated hydrant: " + JSON.stringify(data));
