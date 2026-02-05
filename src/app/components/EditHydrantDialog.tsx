@@ -96,7 +96,7 @@ export default function EditHydrantDialog({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div className="bg-gray-700 rounded-lg shadow-lg w-96 max-h-[90vh] overflow-y-auto p-6">
 
-        <h2 className="text-xl font-bold mb-4">Editează hidrant</h2>
+        <h2 className="text-lg font-bold mb-4">Editează hidrant</h2>
         <div className="space-y-2">
           <GetLocationComponent
             initialLat={lat}
