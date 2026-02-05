@@ -1,6 +1,10 @@
 {
   "name": "hidranti-map",
+<<<<<<< HEAD
   "version": "0.1.1",
+=======
+  "version": "0.2.3",
+>>>>>>> 2341efc56fe7bfdadef65bd402654a0f5a03173c
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
