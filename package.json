@@ -9,10 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@firebase/app": "^0.14.8",
     "@firebase/app-compat": "^0.5.8",
-    "@firebase/util": "^1.13.0",
     "@react-google-maps/api": "^2.20.7",
+    "firebase": "^12.9.0",
     "geofire-common": "^6.0.0",
     "geofirestore": "^5.2.0",
     "lucide-react": "^0.540.0",
