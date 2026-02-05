@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import usePlacesAutocomplete, {
   getGeocode,
   getLatLng,
@@ -25,6 +25,7 @@ import Settings from "./Settings";
 import FiltersBar from "./FiltersBar";
 import GoToAddressButton from "./GoToAdressButton";
 import { Operator } from "./LoginHelper";
+import { getLocation } from "../utils/requestLocationHelper";
 
 const libraries: "places"[] = ["places"];
 
@@ -60,7 +61,7 @@ function LoadedSearchBarWithMap({
 
   const [dragging, setDragging] = useState(false);
   const [originalPos, setOriginalPos] = useState<google.maps.LatLng | null>(
-    null
+    null,
   );
   const maxDistance = 0.1; // max distance in km (adjust as needed)
 
@@ -68,6 +69,8 @@ function LoadedSearchBarWithMap({
   const currentMarkerRef = useRef<google.maps.Marker | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const [iconSize, setIconSize] = useState(26); // initial icon size
+  const [userLocation, setUserLocation] = useState<GeoPoint | null>(null);
+  const [fireTruckCliked, setFireTruckClicked] = useState(false);
 
   // La mount, citim din localStorage
 
@@ -110,7 +113,7 @@ function LoadedSearchBarWithMap({
           center, // default center if null
           parseInt(range),
           pressure,
-          status
+          status,
         );
 
         setHydrants(data);
@@ -145,7 +148,7 @@ function LoadedSearchBarWithMap({
     // if last search was more than 24h ago, ignore saved location
     if (now - savedTime > 24 * 60 * 60 * 1000) {
       console.log(
-        "Last search is null or was more than 24h ago, ignoring saved location"
+        "Last search is null or was more than 24h ago, ignoring saved location",
       );
       return;
     }
@@ -159,6 +162,27 @@ function LoadedSearchBarWithMap({
         console.log("Using saved center from localStorage:", { lat, lng });
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const fetchUserLocation = async () => {
+      try {
+        // Try to get location using HTML5 Geolocation API
+        const location = await getLocation();
+        if (location) {
+          setUserLocation(
+            new GeoPoint(
+              location.latitude as number,
+              location.longitude as number,
+            ),
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching user location:", error);
+      }
+    };
+
+    fetchUserLocation();
   }, []);
 
   const handleSelect = async (description: string) => {
@@ -187,6 +211,11 @@ function LoadedSearchBarWithMap({
     scaledSize: new google.maps.Size(60, 60),
   };
 
+  const userPoint = {
+    url: "/userPoint.png",
+    scaledSize: new google.maps.Size(50, 50),
+  };
+
   // icons
   const dynamicIcon = (size: number, tipul: Type): google.maps.Icon => {
     // Calculate the icon size based on the type
@@ -194,16 +223,16 @@ function LoadedSearchBarWithMap({
       tipul === Type.SUPRATERAN
         ? size
         : tipul === Type.INTERIOR
-        ? size * 0.6
-        : size * 0.6;
+          ? size * 0.6
+          : size * 0.6;
 
     return {
       url:
         tipul === Type.SUPRATERAN
           ? "/upperground_hydrant.png"
           : tipul === Type.INTERIOR
-          ? "/interior_hydrant.png"
-          : "/underground_hydrant.png",
+            ? "/interior_hydrant.png"
+            : "/underground_hydrant.png",
       scaledSize: new google.maps.Size(iconSize, iconSize),
       anchor: new google.maps.Point(iconSize / 2, iconSize),
     };
@@ -214,8 +243,8 @@ function LoadedSearchBarWithMap({
       tipul == Type.SUPRATERAN
         ? "/upperground_hydrant.png"
         : tipul == Type.INTERIOR
-        ? "/interior_hydrant.png"
-        : "/underground_hydrant.png",
+          ? "/interior_hydrant.png"
+          : "/underground_hydrant.png",
     scaledSize: new google.maps.Size(45, 45),
     anchor: new google.maps.Point(30, 60),
   });
@@ -251,8 +280,12 @@ function LoadedSearchBarWithMap({
         location: new GeoPoint(pos.lat(), pos.lng()),
         lastUpdated: Date.now(),
       };
-      const operator = localStorage.getItem("operator") as Operator?? Operator.ISU;
-      const saved = await saveUpdatedHydrantToFirestore(updatedHydrant, operator);
+      const operator =
+        (localStorage.getItem("operator") as Operator) ?? Operator.ISU;
+      const saved = await saveUpdatedHydrantToFirestore(
+        updatedHydrant,
+        operator,
+      );
       if (!saved) {
         console.error("Failed to save updated hydrant to Firestore");
         return;
@@ -263,7 +296,7 @@ function LoadedSearchBarWithMap({
       // await updateHydrantLocation(h.id!, updatedHydrant.location);
 
       setHydrants((prev) =>
-        prev.map((hydrant) => (hydrant.id === h.id ? updatedHydrant : hydrant))
+        prev.map((hydrant) => (hydrant.id === h.id ? updatedHydrant : hydrant)),
       );
       setMovingId(null);
       setActiveHydrantId(h.id!);
@@ -317,9 +350,9 @@ function LoadedSearchBarWithMap({
                   mapRef.current?.getCenter()
                     ? new GeoPoint(
                         mapRef.current?.getCenter()!.lat(),
-                        mapRef.current?.getCenter()!.lng()
+                        mapRef.current?.getCenter()!.lng(),
                       )
-                    : null
+                    : null,
                 );
 
                 setIconSize(size);
@@ -344,7 +377,51 @@ function LoadedSearchBarWithMap({
                 new google.maps.LatLng(center.latitude, center.longitude)
               }
               icon={FireTruck}
+              onClick={() => {
+                mapRef.current?.panTo({
+                  lat: center.latitude,
+                  lng: center.longitude,
+                });
+                setTimeout(() => {
+                  setCurrentLocation(center);
+                }, 200);
+                setFireTruckClicked(true);
+              }}
             />
+            {fireTruckCliked && userLocation && (
+              <InfoWindow
+                options={{ pixelOffset: new google.maps.Size(0, -40) }}
+                position={{
+                  lat: center.latitude,
+                  lng: center.longitude,
+                }}
+                onCloseClick={() => setFireTruckClicked(false)}
+              >
+                <div className="bg-gray-600 text-xs p-2 rounded-md text-white">
+                  <p className=" text-center p-2 font-semibold text-[16px]">
+                    Locația incendiului
+                  </p>
+
+                  <GoToAddressButton
+                    lat={center.latitude}
+                    lng={center.longitude}
+                    text="Navighează la locație"
+                  />
+                </div>
+              </InfoWindow>
+            )}
+
+            {userLocation && (
+              <Marker
+                position={
+                  new google.maps.LatLng(
+                    userLocation.latitude,
+                    userLocation.longitude,
+                  )
+                }
+                icon={userPoint}
+              />
+            )}
 
             {hydrants.map((h) => (
               <Marker
@@ -386,7 +463,7 @@ function LoadedSearchBarWithMap({
                 onDragEnd={() => {
                   if (currentMarkerRef.current) {
                     currentMarkerRef.current.setIcon(
-                      dynamicIcon(iconSize, h.tipul)
+                      dynamicIcon(iconSize, h.tipul),
                     );
                     currentMarkerRef.current = null;
                   }
@@ -399,7 +476,7 @@ function LoadedSearchBarWithMap({
                   });
                   setTimeout(() => {
                     setCurrentLocation(
-                      new GeoPoint(h.location.latitude, h.location.longitude)
+                      new GeoPoint(h.location.latitude, h.location.longitude),
                     );
                   }, 200);
                   setActiveHydrantId(h.id!);
@@ -428,8 +505,8 @@ function LoadedSearchBarWithMap({
                                 markersRef.current[h.id!]!.setPosition(
                                   new google.maps.LatLng(
                                     h.location.latitude,
-                                    h.location.longitude
-                                  )
+                                    h.location.longitude,
+                                  ),
                                 );
                               }
                               setMovingId(null);
@@ -448,8 +525,8 @@ function LoadedSearchBarWithMap({
                                   ]!.getPosition()!.lat(),
                                   markersRef.current[
                                     h.id!
-                                  ]!.getPosition()!.lng()
-                                )
+                                  ]!.getPosition()!.lng(),
+                                ),
                               );
                               saveNewLocation(h, markersRef.current[h.id!]!);
                               setActiveHydrantId(null);
@@ -485,7 +562,7 @@ function LoadedSearchBarWithMap({
                                     day: "2-digit",
                                     month: "2-digit",
                                     year: "numeric",
-                                  }
+                                  },
                                 ) +
                                 " " +
                                 new Date(h.lastUpdated).toLocaleTimeString(
@@ -493,7 +570,7 @@ function LoadedSearchBarWithMap({
                                   {
                                     hour: "2-digit",
                                     minute: "2-digit",
-                                  }
+                                  },
                                 )
                               : "N/A"}
                           </p>
@@ -528,8 +605,8 @@ function LoadedSearchBarWithMap({
                                       setCurrentLocation(
                                         new GeoPoint(
                                           h.location.latitude,
-                                          h.location.longitude
-                                        )
+                                          h.location.longitude,
+                                        ),
                                       );
                                     }, 500);
                                   }}
@@ -560,14 +637,14 @@ function LoadedSearchBarWithMap({
               onHydrantUpdated={(updatedHydrant) => {
                 setHydrants((prev) =>
                   prev.map((h) =>
-                    h.id === updatedHydrant.id ? updatedHydrant : h
-                  )
+                    h.id === updatedHydrant.id ? updatedHydrant : h,
+                  ),
                 );
                 setCurrentLocation(
                   new GeoPoint(
                     updatedHydrant.location.latitude,
-                    updatedHydrant.location.longitude
-                  )
+                    updatedHydrant.location.longitude,
+                  ),
                 );
                 setActiveHydrantId(updatedHydrant.id!);
                 setZoom(16);
@@ -592,8 +669,8 @@ function LoadedSearchBarWithMap({
                 setCurrentLocation(
                   new GeoPoint(
                     hydrant.location.latitude,
-                    hydrant.location.longitude
-                  )
+                    hydrant.location.longitude,
+                  ),
                 );
                 setActiveHydrantId(hydrant.id!);
               }, 500);
